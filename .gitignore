@@ -3,3 +3,5 @@
 *.SBD
 *.out
 *.bin
+/run
+*.o
