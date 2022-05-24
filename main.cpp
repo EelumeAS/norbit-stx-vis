@@ -59,7 +59,7 @@ int main(int argc, const char** argv)
                 bath_data_packet_t* bath = (bath_data_packet_t*)data;
                 assert(header->entry_size == 10352);
 
-                assert(bath->header.preamble = 0xdeadbeef);
+                assert(bath->header.preamble == 0xdeadbeef);
                 printf("ping_number: %d, freq: %f, tx_angle: %f, swath_open: %f\n", bath->sub_header.ping_number, bath->sub_header.tx_freq, bath->sub_header.tx_angle, bath->sub_header.swath_open);
                 assert(bath->sub_header.N == 512);
                 assert(bath->sub_header.sample_rate == 78125.f);
@@ -87,10 +87,10 @@ int main(int argc, const char** argv)
                     //float x = ((float)index / (float)bath->sub_header.N) * 2 - 1;
                     //float y = (range[index] / 10.f) * 2 - 1;
 
-                    const float scale = .1;
+                    const float scale = .04;
                     float x = sin(bath->dp[index].angle) * range[index] * scale;
                     float y = cos(bath->dp[index].angle) * range[index] * scale;
-                    printf("x: %f\ty: %f\n", x, y);
+                    //printf("x: %f\ty: %f\n", x, y);
 
                     //float x = cos(x + (float)t / 500.f);
                     //float y = sin(x + (float)t / 500.f);
