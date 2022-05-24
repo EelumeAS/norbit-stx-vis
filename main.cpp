@@ -106,7 +106,7 @@ int main(int argc, const char** argv)
                 projection.setIdentity();
 
                 updateWp(vertices, colors, projection);
-                usleep(20000);
+                usleep(50000);
 
                 SDL_Event e;
                 while ( SDL_PollEvent(&e) ) {
