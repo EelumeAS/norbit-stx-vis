@@ -3,6 +3,9 @@
 #include <string.h>
 #include <assert.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "openglWp.h"
 
@@ -142,7 +145,7 @@ int main(int argc, char** argv)
         }
     }
 
-    if (!filename && ((ip[1] == 0) || (port == 0)))
+    if (!filename && (!ip[1] || !port))
     {
         printf("please specify either file or tcp url\n");
         print_usage(argv);
@@ -176,6 +179,23 @@ int main(int argc, char** argv)
         fclose(f);
     }
 
+    //int sock = -1;
+    //std::vector<bath_data_packet_t>
+    //if (ip[1] && port)
+    //{
+    //    printf("connecting to tcp port at %s:%d\n", ip, port);
+    //    sock = socket(AF_INET, SOCK_STREAM, 0);
+    //    assert(sock != -1);
+
+    //    struct sockaddr_in addr = {0};
+    //    addr.sin_family = AF_INET;
+    //    addr.sin_port = htons(port);
+    //    addr.sin_addr.s_addr = inet_addr(ip);
+
+    //    int conn = connect(sock, (struct sockaddr*)&addr, sizeof(addr));
+    //    assert(conn == 0);
+    //}
+
     // plotting init
     int rc = initWp();
     assert(rc == 0);
@@ -183,24 +203,15 @@ int main(int argc, char** argv)
     if (format == RAW)
     {
         if (file)
-        {
-            for (const char* search = (const char*)file; search < file + file_size;)
-            {
-                if (*(uint32_t*)search == 0xdeadbeef)
-                {
-                    const bath_data_packet_t* bath = (const bath_data_packet_t*)search;
-                    if (process_bath(bath))
-                        return 1;
-
-                    search += sizeof(bath->header) + sizeof(bath->sub_header) + sizeof(detectionpoint_t) * bath->sub_header.N;
-                }
-                else
-                {
-                    printf("searching at %d\n", search - file);
-                    ++search;
-                }
-            }
-        }
+            for (const char* bath = file; bath < file + file_size; bath += ((const bath_data_packet_t*)bath)->size())
+                if (process_bath((const bath_data_packet_t*)bath))
+                    return 1;
+        //else if(sock != -1)
+        //{
+        //    int n_read = read(sock, buf + size, sizeof(bath_data_packet_t));
+        //    assert(n_read != -1);
+        //    size += n_read;
+        //}
     }
     if (format == SBD)
     {
@@ -220,7 +231,7 @@ int main(int argc, char** argv)
                     assert(header->entry_size == 10352);
 
                     bath_data_packet_t* bath = (bath_data_packet_t*)data;
-                    assert(sizeof(bath->header) + sizeof(bath->sub_header) + sizeof(detectionpoint_t) * bath->sub_header.N == header->entry_size);
+                    assert(bath->size() == header->entry_size);
                     if (process_bath(bath))
                         return 1;
 
