@@ -10,6 +10,97 @@
 
 #include "navi.h"
 
+int process_bath(const bath_data_packet_t* bath, int bath_size = 0)
+{
+    using point_t = Eigen::Vector3f;
+    std::vector<point_t> vertices(bath->sub_header.N);
+    std::vector<point_t> colors(bath->sub_header.N);
+    std::vector<float> range(bath->sub_header.N, 0.f);
+
+    assert(bath->header.preamble == 0xdeadbeef);
+    printf("ping_number: %d, freq: %f, tx_angle: %f, swath_open: %f\n", bath->sub_header.ping_number, bath->sub_header.tx_freq, bath->sub_header.tx_angle, bath->sub_header.swath_open);
+    assert(bath->sub_header.N == 512);
+    assert(bath->sub_header.sample_rate == 78125.f);
+
+
+    if (bath_size)
+        assert(sizeof(bath->header) + sizeof(bath->sub_header) + sizeof(detectionpoint_t) * bath->sub_header.N == bath_size);
+
+    for (int index = 0; index < bath->sub_header.N; ++index)
+    {
+        printf("sample_number: %u %f %u %u %f %u %u %u\n", bath->dp[index].sample_number, bath->dp[index].angle, bath->dp[index].upper_gate, bath->dp[index].lower_gate, bath->dp[index].intensity, bath->dp[index].flags, bath->dp[index].quality_flags, bath->dp[index].quality_val);
+        //for (char* i = (char*)(sample + index); i != (char*)(sample + index + 1); ++i)
+        //    printf("%02x", *i);
+        //printf("\n");
+        //printf("%x\n", bath->dp[index].sample_number >> 24);
+        range[index] = (bath->dp[index].sample_number * bath->sub_header.snd_velocity) / (2 * bath->sub_header.sample_rate);
+        printf("range %d:\t%f\n", index, range[index]);
+
+        point_t vertex;
+        //float x = ((float)index / (float)bath->sub_header.N) * 2 - 1;
+        //float y = (range[index] / 10.f) * 2 - 1;
+
+        const float scale = .04;
+        float x = sin(bath->dp[index].angle) * range[index] * scale;
+        float y = cos(bath->dp[index].angle) * range[index] * scale;
+        //printf("x: %f\ty: %f\n", x, y);
+
+        //float x = cos(x + (float)t / 500.f);
+        //float y = sin(x + (float)t / 500.f);
+        vertex << x, y, -1;
+        vertices[index] = vertex;
+
+        point_t color;
+        color << 1, 1, 1;
+        colors[index] = color;
+    }
+
+    Eigen::Matrix3f projection;
+    projection.setIdentity();
+
+    updateWp(vertices, colors, projection);
+    usleep(50000);
+
+    SDL_Event e;
+    while ( SDL_PollEvent(&e) ) {
+      switch (e.type) {
+        case SDL_QUIT:
+          return 1;
+        break;
+        case SDL_MOUSEBUTTONDOWN:
+        {
+          //int x, y;
+          //SDL_GetMouseState(&x, &y);
+          //down = true;
+          //down_at.x = 2*(float)x/width - 1;
+          //down_at.y = 1 - 2*(float)y/height;
+          //down_at_phi = phi;
+          //down_at_theta = theta;
+          //down_at_xi = xi;
+        }
+        break;
+        case SDL_MOUSEBUTTONUP:
+        {
+          //int x, y;
+          //SDL_GetMouseState(&x, &y);
+          //down = false;
+        }
+        break;
+        case SDL_KEYDOWN:
+        {
+          switch (e.key.keysym.sym) {
+            case SDLK_ESCAPE:
+              return 1;
+            break;
+          }
+        break;
+        }
+      }
+    }
+
+    return 0;
+}
+
 int main(int argc, const char** argv)
 {
     const char* filename;
@@ -39,9 +130,6 @@ int main(int argc, const char** argv)
     // plotting init
     int rc = initWp();
     assert(rc == 0);
-    using point_t = Eigen::Vector3f;
-    std::vector<point_t> vertices;
-    std::vector<point_t> colors;
 
     const char* p = buf;
     for (int t=0;;++t)
@@ -56,94 +144,12 @@ int main(int argc, const char** argv)
         {
             case SbdEntryHeader::WBMS_BATH:
             {
-                bath_data_packet_t* bath = (bath_data_packet_t*)data;
                 assert(header->entry_size == 10352);
 
-                assert(bath->header.preamble == 0xdeadbeef);
-                printf("ping_number: %d, freq: %f, tx_angle: %f, swath_open: %f\n", bath->sub_header.ping_number, bath->sub_header.tx_freq, bath->sub_header.tx_angle, bath->sub_header.swath_open);
-                assert(bath->sub_header.N == 512);
-                assert(bath->sub_header.sample_rate == 78125.f);
-
-                if (vertices.size() != bath->sub_header.N)
-                    vertices.resize(bath->sub_header.N);
-                if (colors.size() != bath->sub_header.N)
-                    colors.resize(bath->sub_header.N);
-
-                std::vector<float> range(bath->sub_header.N, 0.f);
-
-                assert(sizeof(bath->header) + sizeof(bath->sub_header) + sizeof(detectionpoint_t) * bath->sub_header.N == header->entry_size);
-
-                for (int index = 0; index < bath->sub_header.N; ++index)
-                {
-                    printf("sample_number: %u %f %u %u %f %u %u %u\n", bath->dp[index].sample_number, bath->dp[index].angle, bath->dp[index].upper_gate, bath->dp[index].lower_gate, bath->dp[index].intensity, bath->dp[index].flags, bath->dp[index].quality_flags, bath->dp[index].quality_val);
-                    //for (char* i = (char*)(sample + index); i != (char*)(sample + index + 1); ++i)
-                    //    printf("%02x", *i);
-                    //printf("\n");
-                    //printf("%x\n", bath->dp[index].sample_number >> 24);
-                    range[index] = (bath->dp[index].sample_number * bath->sub_header.snd_velocity) / (2 * bath->sub_header.sample_rate);
-                    printf("range %d:\t%f\n", index, range[index]);
-
-                    point_t vertex;
-                    //float x = ((float)index / (float)bath->sub_header.N) * 2 - 1;
-                    //float y = (range[index] / 10.f) * 2 - 1;
-
-                    const float scale = .04;
-                    float x = sin(bath->dp[index].angle) * range[index] * scale;
-                    float y = cos(bath->dp[index].angle) * range[index] * scale;
-                    //printf("x: %f\ty: %f\n", x, y);
-
-                    //float x = cos(x + (float)t / 500.f);
-                    //float y = sin(x + (float)t / 500.f);
-                    vertex << x, y, -1;
-                    vertices.push_back(vertex);
-
-                    point_t color;
-                    color << 1, 1, 1;
-                    colors.push_back(color);
-                }
-
-                Eigen::Matrix3f projection;
-                projection.setIdentity();
-
-                updateWp(vertices, colors, projection);
-                usleep(50000);
-
-                SDL_Event e;
-                while ( SDL_PollEvent(&e) ) {
-                  switch (e.type) {
-                    case SDL_QUIT:
-                      return 1;
-                    break;
-                    case SDL_MOUSEBUTTONDOWN:
-                    {
-                      //int x, y;
-                      //SDL_GetMouseState(&x, &y);
-                      //down = true;
-                      //down_at.x = 2*(float)x/width - 1;
-                      //down_at.y = 1 - 2*(float)y/height;
-                      //down_at_phi = phi;
-                      //down_at_theta = theta;
-                      //down_at_xi = xi;
-                    }
-                    break;
-                    case SDL_MOUSEBUTTONUP:
-                    {
-                      //int x, y;
-                      //SDL_GetMouseState(&x, &y);
-                      //down = false;
-                    }
-                    break;
-                    case SDL_KEYDOWN:
-                    {
-                      switch (e.key.keysym.sym) {
-                        case SDLK_ESCAPE:
-                          return 1;
-                        break;
-                      }
-                    break;
-                    }
-                  }
-                }
+                bath_data_packet_t* bath = (bath_data_packet_t*)data;
+                int rc = process_bath(bath, header->entry_size);
+                if (rc)
+                    return rc;
 
                 break;
             }
