@@ -97,8 +97,8 @@ static_assert(sizeof(bath_data_header_t) == 88);
 typedef struct{
     packet_header_t         header;                                    //24B
     bath_data_header_t      sub_header;                                //88B
-    detectionpoint_t        dp[BATH_DATA_MAX_DETECTION_POINTS];        //20B*4k = 80kB
-    //detectionpoint_t        dp[512];
+    //detectionpoint_t        dp[BATH_DATA_MAX_DETECTION_POINTS];        //20B*4k = 80kB
+    detectionpoint_t        dp[512];
 
     int size() const {return sizeof(header) + sizeof(sub_header) + sizeof(detectionpoint_t) * sub_header.N;};
 }bath_data_packet_t;
