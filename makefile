@@ -4,7 +4,7 @@ ifeq ($(PREFIX),)
 endif
 
 run: main.cpp
-	g++ -lGL -lGLEW -lSDL2 `pkg-config --cflags --libs opencv4` main.cpp -o run
+	g++ -lGL -lGLEW -lSDL2 main.cpp -o run
 
 clean:
 	rm run

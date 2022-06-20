@@ -4,16 +4,12 @@
 #include <SOIL/SOIL.h>
 #include <vector>
 #include <eigen3/Eigen/Dense>
-#include <opencv2/core.hpp>
 
 //#define  WGL_SWAP_METHOD_ARB WGL_SWAP_EXCHANGE_ARB
 
 SDL_Window* window;
 SDL_GLContext glContext;
 
-void mat2texture(const cv::Mat& image, GLuint& imageTexture);
-void gray2texture(const uint8_t* gray, GLuint& imageTexture, uint32_t rows, uint32_t cols);
-void BindCVMat2GLTexture(const cv::Mat& image, GLuint& imageTexture);
 GLuint BuildShaderProgram(const char *vsPath, const char *fsPath);
 GLuint CreateShader(GLenum eShaderType, const char *strShaderFile);
 GLuint unit_shader;
