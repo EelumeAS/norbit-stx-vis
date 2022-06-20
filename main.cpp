@@ -41,7 +41,7 @@ int process_bath(const bath_data_packet_t* bath)
 
         const float scale = .04;
         float x = sin(bath->dp[index].angle) * range[index] * scale;
-        float y = cos(bath->dp[index].angle) * range[index] * scale;
+        float y = -cos(bath->dp[index].angle) * range[index] * scale;
         //printf("x: %f\ty: %f\n", x, y);
 
         //float x = cos(x + (float)t / 500.f);
