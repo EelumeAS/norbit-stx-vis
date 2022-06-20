@@ -273,6 +273,55 @@ int main(int argc, char** argv)
                         tcp_bytes += n_read;
                     }
                     assert(tcp_bytes == sizeof(*bath));
+                    if (bath->header.preamble != 0xdeadbeef)
+                    {
+                        printf("no deadbeef\n");
+                        bool found_deadbeef = false;
+                        while (!found_deadbeef)
+                        {
+                            printf("still no deadbeef\n");
+                            for (const char* search = (const char*)buf; search < buf + tcp_bytes;)
+                            {
+                                if (*(uint32_t*)search == 0xdeadbeef)
+                                {
+                                    bath = (const bath_data_packet_t*)search;
+                                    found_deadbeef = true;
+                                    break;
+                                }
+                                else
+                                {
+                                    printf("searching at %d\n", search - buf);
+                                    ++search;
+                                }
+                            }
+
+                            tcp_bytes = 0;
+                            while(tcp_bytes < sizeof(bath_data_packet_t))
+                            {
+                                int n_read = read(sock, buf + tcp_bytes, sizeof(*bath) - tcp_bytes);
+                                assert(n_read != -1);
+                                tcp_bytes += n_read;
+                            }
+                        }
+                        const int bath_offset = (const char*)bath - buf;
+                        printf("found deadbeef at %d\n", bath_offset);
+
+                        // move deadbeef to start of buffer
+                        for (char* from = (char*)bath; from < buf + tcp_bytes; ++from)
+                            from[-bath_offset] = *from;
+                        tcp_bytes -= bath_offset;
+
+                        bath = (const bath_data_packet_t*)((const char*)bath - bath_offset);
+
+                        // fill in the rest
+                        while(tcp_bytes < sizeof(bath_data_packet_t))
+                        {
+                            int n_read = read(sock, buf + tcp_bytes, sizeof(bath_data_packet_t) - tcp_bytes);
+                            assert(n_read != -1);
+                            tcp_bytes += n_read;
+                        }
+                    }
+                    printf("bath size: %d\n", bath->size());
                     assert(bath->size() == sizeof(*bath));
                     if (process_bath(bath))
                         return 1;
